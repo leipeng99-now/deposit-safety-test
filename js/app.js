@@ -210,7 +210,8 @@
 
   /* ---------- 雷达图（SVG） ---------- */
   function radarSVG(dims) {
-    var cx = 130, cy = 105, R = 78;
+    var W = 360, H = 240;
+    var cx = 180, cy = 118, R = 80;
     // 4 轴：上 D2 应急缓冲 / 右 D3 消费决策 / 下 D4 金钱情绪 / 左 D1 现金流掌控
     var axes = [
       { key: "D2", label: "应急缓冲", ang: -90 },
@@ -222,7 +223,8 @@
       var rad = ang * Math.PI / 180;
       return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
     }
-    var svg = '<svg width="260" height="150" viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg">';
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:' + W +
+      'px;height:auto;display:block" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="四维雷达图">';
     [1, 0.66, 0.33].forEach(function (f) {
       var p = axes.map(function (a) { return pt(a.ang, R * f).join(","); }).join(" ");
       svg += '<polygon points="' + p + '" fill="none" stroke="#dfe7e1" stroke-width="1"/>';
@@ -240,14 +242,14 @@
       svg += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="3" fill="#1f7a5a"/>';
     });
     axes.forEach(function (a) {
-      var p = pt(a.ang, R + 15);
+      var p = pt(a.ang, R + 12);
       var anchor = "middle", dy = 4;
       if (a.ang === 0) anchor = "start";
       if (a.ang === 180) anchor = "end";
       if (a.ang === -90) dy = 0;
       if (a.ang === 90) dy = 12;
       svg += '<text x="' + p[0] + '" y="' + (p[1] + dy) + '" text-anchor="' + anchor +
-        '" font-size="11" fill="#7a847e">' + a.label + " " + dims[a.key] + "</text>";
+        '" font-size="10" fill="#7a847e">' + a.label + " " + dims[a.key] + "</text>";
     });
     svg += "</svg>";
     return svg;
