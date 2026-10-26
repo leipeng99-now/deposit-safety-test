@@ -46,10 +46,14 @@
     return decodeURIComponent(escape(atob(s)));
   }
 
-  /* ---------- 后端访问层（CloudBase 优先 → Supabase → 本地） ---------- */
+  /* ---------- 后端访问层（CloudBase PG 优先 → 云函数 → Supabase → 本地） ---------- */
+  function pgEnabled() {
+    return !!(typeof PG_PUBLISHABLE_KEY !== "undefined" && PG_PUBLISHABLE_KEY &&
+              typeof PG_GATEWAY_BASE !== "undefined" && PG_GATEWAY_BASE);
+  }
   function cbEnabled() { return !!(typeof CLOUDBASE_API_BASE !== "undefined" && CLOUDBASE_API_BASE); }
   function sbEnabled() { return !!(SUPABASE_URL && SUPABASE_ANON_KEY); }
-  function beEnabled() { return cbEnabled() || sbEnabled(); }
+  function beEnabled() { return pgEnabled() || cbEnabled() || sbEnabled(); }
 
   function getDeviceId() {
     var d = localStorage.getItem(DEVICE_KEY);
@@ -79,6 +83,40 @@
     });
   }
 
+  /* CloudBase PostgreSQL 数据网关（PostgREST 风格） */
+  function pgHeaders() {
+    return { "Authorization": "Bearer " + PG_PUBLISHABLE_KEY, "Content-Type": "application/json" };
+  }
+
+  function pgCheck(pwd) {
+    return fetch(PG_GATEWAY_BASE + "/v1/rdb/rest/test_passwords?code=eq." + encodeURIComponent(pwd) + "&select=active,used,max", {
+      headers: pgHeaders()
+    }).then(function (r) {
+      if (!r.ok) throw new Error("pg check http " + r.status);
+      return r.json();
+    }).then(function (rows) {
+      rows = rows || [];
+      if (!rows.length || rows[0].active === false) return { ok: false, reason: "wrong" };
+      var remain = Math.max(0, (rows[0].max || 3) - (rows[0].used || 0));
+      if (remain <= 0) return { ok: false, reason: "exhausted" };
+      return { ok: true, remain: remain };
+    });
+  }
+
+  function pgConsume(pwd) {
+    return fetch(PG_GATEWAY_BASE + "/v1/rdb/rpc/consume_use", {
+      method: "POST",
+      headers: pgHeaders(),
+      body: JSON.stringify({ p_code: pwd })
+    }).then(function (r) {
+      if (!r.ok) throw new Error("pg consume http " + r.status);
+      return r.json();
+    }).then(function (d) {
+      if (!d || d.valid !== true) return { ok: false, reason: (d && d.reason) || "wrong" };
+      return { ok: true, used: d.used, remain: d.remain };
+    });
+  }
+
   function sbRPC(fn, args) {
     return fetch(SUPABASE_URL + "/rest/v1/rpc/" + fn, {
       method: "POST",
@@ -96,6 +134,7 @@
 
   // 统一接口：返回 {ok:true, remain} 或 {ok:false, reason:"wrong"|"exhausted"}
   function apiCheckPassword(pwd) {
+    if (pgEnabled()) return pgCheck(pwd);
     if (cbEnabled()) {
       return cbCall("check", { code: pwd }).then(function (d) {
         if (!d.valid) return { ok: false, reason: d.reason || "wrong" };
@@ -114,6 +153,9 @@
 
   // 查询剩余次数（不扣次）
   function apiRemain(pwd) {
+    if (pgEnabled()) {
+      return pgCheck(pwd).then(function (r) { if (!r.ok) throw new Error(r.reason); return r.remain; });
+    }
     if (cbEnabled()) {
       return cbCall("remain", { code: pwd }).then(function (d) { return d.remain; });
     }
@@ -122,6 +164,7 @@
 
   // 扣减一次（答题结束调用）
   function apiConsume(pwd) {
+    if (pgEnabled()) return pgConsume(pwd);
     if (cbEnabled()) {
       return cbCall("consume", { code: pwd }).then(function (d) {
         if (!d.valid) return { ok: false, reason: d.reason || "wrong" };
@@ -287,8 +330,8 @@
         sessionStorage.setItem(CURRENT_PWD_KEY, pwd);
         setTimeout(gotoIntro, 500);
       }).catch(function () {
-        if (cbEnabled()) {
-          // CloudBase 为主后端时不本地放行，避免绕过校验
+        if (pgEnabled() || cbEnabled()) {
+          // 云端为主后端时不本地放行，避免绕过校验
           msg.textContent = "网络波动，请稍后重试";
           msg.className = "gate-msg err";
           return;
@@ -328,7 +371,7 @@
     if (beEnabled() && currentPwd) {
       apiRemain(currentPwd)
         .then(function (n) { el.textContent = n; })
-        .catch(function () { el.textContent = cbEnabled() ? "-" : localRemaining(currentPwd); });
+        .catch(function () { el.textContent = "-"; });
     } else {
       el.textContent = localRemaining(currentPwd);
     }
@@ -353,7 +396,7 @@
           enterQuiz();
         })
         .catch(function () {
-          if (cbEnabled()) {
+          if (pgEnabled() || cbEnabled()) {
             // 主后端不可达：允许先答题，交卷时再扣次（避免网络抖动卡住用户）
             enterQuiz();
             return;
@@ -518,7 +561,7 @@
           gotoIntro();
         })
         .catch(function () {
-          if (cbEnabled()) { gotoIntro(); return; }
+          if (pgEnabled() || cbEnabled()) { gotoIntro(); return; }
           if (localRemaining(savedPwd) <= 0) {
             showToast("该密码次数已用完，请输入新密码");
             showScreen("screen-gate");

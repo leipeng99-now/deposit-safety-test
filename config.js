@@ -40,6 +40,17 @@ const CLOUDBASE_ENV_ID = "leipeng99-d8gq6j5dzb0a65db1";
 const CLOUDBASE_API_BASE = "";
 
 /* ============================================================
+   CloudBase PostgreSQL 数据网关（主后端，国内直连）
+   ------------------------------------------------------------
+   PG_PUBLISHABLE_KEY = CloudBase 控制台的 Publishable Key（公开密钥，
+   等同 Supabase anon key，映射为数据库 anon 角色，受 RLS 约束，可放前端）
+   获取：控制台 → 环境管理/身份认证 → API 密钥
+     https://tcb.cloud.tencent.com/dev?envId=leipeng99-d8gq6j5dzb0a65db1#/env/apikey
+   ============================================================ */
+const PG_GATEWAY_BASE = "https://leipeng99-d8gq6j5dzb0a65db1.api.tcloudbasegateway.com";
+const PG_PUBLISHABLE_KEY = "";
+
+/* ============================================================
    Supabase 云端配置（后端数据库）
    ------------------------------------------------------------
    填入你的 Supabase 项目信息后，密码校验和次数统计走云端，
