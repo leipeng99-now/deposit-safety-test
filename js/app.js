@@ -134,13 +134,13 @@
 
   // 统一接口：返回 {ok:true, remain} 或 {ok:false, reason:"wrong"|"exhausted"}
   function apiCheckPassword(pwd) {
-    if (pgEnabled()) return pgCheck(pwd);
     if (cbEnabled()) {
       return cbCall("check", { code: pwd }).then(function (d) {
         if (!d.valid) return { ok: false, reason: d.reason || "wrong" };
         return { ok: true, remain: d.remain };
       });
     }
+    if (pgEnabled()) return pgCheck(pwd);
     return sbRPC("check_password", { p_code: pwd }).then(function (ok) {
       if (!ok) return { ok: false, reason: "wrong" };
       return sbRPC("get_remaining_uses", { p_code: pwd, p_device: getDeviceId() })
@@ -153,24 +153,24 @@
 
   // 查询剩余次数（不扣次）
   function apiRemain(pwd) {
-    if (pgEnabled()) {
-      return pgCheck(pwd).then(function (r) { if (!r.ok) throw new Error(r.reason); return r.remain; });
-    }
     if (cbEnabled()) {
       return cbCall("remain", { code: pwd }).then(function (d) { return d.remain; });
+    }
+    if (pgEnabled()) {
+      return pgCheck(pwd).then(function (r) { if (!r.ok) throw new Error(r.reason); return r.remain; });
     }
     return sbRPC("get_remaining_uses", { p_code: pwd, p_device: getDeviceId() });
   }
 
   // 扣减一次（答题结束调用）
   function apiConsume(pwd) {
-    if (pgEnabled()) return pgConsume(pwd);
     if (cbEnabled()) {
       return cbCall("consume", { code: pwd }).then(function (d) {
         if (!d.valid) return { ok: false, reason: d.reason || "wrong" };
         return { ok: true, used: d.used, remain: d.remain };
       });
     }
+    if (pgEnabled()) return pgConsume(pwd);
     return sbRPC("consume_test_use", { p_code: pwd, p_device: getDeviceId(), p_max: MAX_USES_PER_DEVICE })
       .then(function (n) {
         if (n === -1) return { ok: false, reason: "wrong" };
