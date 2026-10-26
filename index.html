@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="存款安全感测试：3分钟测出你的抗风险余量，6种存钱动物人格等你认领">
+  <title>存款安全感测试 · 你的抗风险余量有几分？</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ===== 屏幕一：密码门 ===== -->
+  <section id="screen-gate" class="screen active">
+    <div class="gate-wrap">
+      <div class="logo-mark">💰</div>
+      <h1 class="main-title">存款安全感测试</h1>
+      <p class="sub-title">3 分钟测出你的「抗风险余量」<br>6 种存钱动物人格，等你认领</p>
+
+      <div class="gate-card">
+        <label class="field-label" for="pwdInput">请输入测评密码</label>
+        <input id="pwdInput" type="text" placeholder="如：CKAQ-2601" autocomplete="off" autocapitalize="characters">
+        <button id="btnUnlock" class="btn-primary">解锁测评</button>
+        <p id="gateMsg" class="gate-msg"></p>
+      </div>
+
+      <div class="gate-tips">
+        <p>✦ 每个密码可测试 3 次</p>
+        <p>✦ 结果页可保存长图 / 生成分享链接</p>
+        <p>✦ 本测试仅供娱乐与自我探索参考，不构成任何财务建议</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 屏幕二：开始页 ===== -->
+  <section id="screen-intro" class="screen">
+    <div class="intro-wrap">
+      <div class="logo-mark">💰</div>
+      <h1 class="main-title">存款安全感测试</h1>
+      <div class="intro-card">
+        <p class="intro-lead">凌晨敢不敢点开总余额？<br>妈妈问"存了多少钱"你敢不敢接？<br>突然要拿 2 万块，你拿得出吗？</p>
+        <ul class="intro-list">
+          <li>📝 共 <b>12 道题</b>，约 3 分钟</li>
+          <li>📊 输出：安全感指数 + 4 维雷达 + 存钱动物人格</li>
+          <li>🖼️ 结果页可保存长图、分享链接</li>
+        </ul>
+        <p class="intro-remain">当前密码剩余次数：<b id="remainCount">-</b> 次</p>
+        <button id="btnStart" class="btn-primary btn-big">开始测评</button>
+        <p class="fine-print">本测试仅供娱乐与自我探索参考，不构成任何财务建议</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 屏幕三：答题页 ===== -->
+  <section id="screen-quiz" class="screen">
+    <div class="quiz-wrap">
+      <div class="progress-row">
+        <div class="progress-bar"><div id="progressFill"></div></div>
+        <span id="progressText" class="progress-text">1/12</span>
+      </div>
+      <div class="quiz-card">
+        <p class="q-tag" id="qTag"></p>
+        <h2 class="q-text" id="qText"></h2>
+        <div id="optionsBox" class="options-box"></div>
+      </div>
+      <button id="btnPrev" class="btn-ghost">← 上一题</button>
+    </div>
+  </section>
+
+  <!-- ===== 屏幕四：结果页 ===== -->
+  <section id="screen-result" class="screen">
+    <div class="result-page-wrap">
+
+      <!-- 长图卡片（截这张） -->
+      <div id="resultCard" class="result-card">
+        <div class="rc-head">
+          <p class="rc-brand">💰 存款安全感测试</p>
+          <p class="rc-tier" id="rcTier"></p>
+        </div>
+        <div class="rc-animal">
+          <div class="rc-emoji" id="rcEmoji"></div>
+          <h2 class="rc-name" id="rcName"></h2>
+          <p class="rc-subtitle" id="rcSubtitle"></p>
+          <p class="rc-persona" id="rcPersona"></p>
+        </div>
+        <div class="rc-score">
+          <p class="rc-score-label">存款安全感指数</p>
+          <p class="rc-score-num" id="rcIndex"></p>
+          <div class="rc-bar"><div id="rcBarFill"></div></div>
+        </div>
+        <div class="rc-radar" id="rcRadar"></div>
+        <p class="rc-copy" id="rcCopy"></p>
+        <div class="rc-block" id="rcTheoryBlock">
+          <p class="rc-block-title" id="rcTheoryTitle"></p>
+          <p class="rc-block-text" id="rcTheory"></p>
+        </div>
+        <div class="rc-block">
+          <p class="rc-block-title" id="rcRiskTitle"></p>
+          <p class="rc-block-text" id="rcRisk"></p>
+        </div>
+        <div class="rc-block">
+          <p class="rc-block-title">✅ 给你的 3 条行动</p>
+          <ol class="rc-actions" id="rcActions"></ol>
+        </div>
+        <div class="rc-badges" id="rcBadges"></div>
+        <p class="rc-quote" id="rcQuote"></p>
+        <p class="rc-footnote">仅供娱乐与自我探索参考 · 不构成任何财务建议</p>
+      </div>
+
+      <!-- 操作区 -->
+      <div class="result-actions">
+        <button id="btnSaveImg" class="btn-primary">🖼️ 保存结果长图</button>
+        <button id="btnCopyLink" class="btn-secondary">🔗 复制结果分享链接</button>
+        <button id="btnRetake" class="btn-ghost">🔄 再测一次</button>
+        <button id="btnGift" class="btn-gift">💝 好评有礼</button>
+      </div>
+      <p id="saveTip" class="save-tip"></p>
+    </div>
+  </section>
+
+  <!-- ===== 弹窗：长图预览 ===== -->
+  <div id="imgModal" class="modal-mask">
+    <div class="modal-body">
+      <p class="modal-title">长按下方图片保存到相册 📱</p>
+      <p class="modal-sub">电脑端点击\"下载图片\"按钮即可保存</p>
+      <div class="img-holder"><img id="resultImg" alt="测评结果长图"></div>
+      <div class="modal-btns">
+        <a id="btnDownloadImg" class="btn-primary" download="存款安全感测试结果.png">⬇️ 下载图片</a>
+        <button id="btnCloseImgModal" class="btn-ghost">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 弹窗：好评有礼 ===== -->
+  <div id="giftModal" class="modal-mask">
+    <div class="modal-body gift-body">
+      <p class="gift-emoji">💝</p>
+      <p class="modal-title">好评有礼 · 1 元返现</p>
+      <div class="gift-steps">
+        <p>1️⃣ 在你购买本测评的店铺完成一条好评</p>
+        <p>2️⃣ 联系客服，发送<b>好评截图</b></p>
+        <p>3️⃣ 客服核验后，<b>1 元现金返现</b>到账 🧧</p>
+      </div>
+      <p class="gift-note">感谢你的支持，祝你的存款安全感节节高升～</p>
+      <div class="modal-btns">
+        <button id="btnCloseGiftModal" class="btn-primary">知道啦</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 全局提示 ===== -->
+  <div id="toast" class="toast"></div>
+
+  <script src="config.js"></script>
+  <script src="js/questions.js"></script>
+  <script src="js/types.js"></script>
+  <script src="js/vendor/html2canvas.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
