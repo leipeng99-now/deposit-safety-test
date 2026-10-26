@@ -2,8 +2,10 @@
 
 趣味心理测评网站：3 分钟测出你的「抗风险余量」，6 种存钱动物人格。
 
+**线上地址：https://leipeng99-now.github.io/deposit-safety-test/**
+
 - 前端：纯 HTML/CSS/JS（无框架、无构建），托管于 **GitHub Pages**
-- 后端：**Supabase**（密码校验 + 全局次数统计，Postgres + RPC）
+- 后端：**Supabase**（密码校验 + 次数统计，Postgres + RPC），不可达时自动降级为本地计数
 
 ## 本地运行
 
