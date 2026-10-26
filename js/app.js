@@ -46,8 +46,10 @@
     return decodeURIComponent(escape(atob(s)));
   }
 
-  /* ---------- Supabase 访问层 ---------- */
+  /* ---------- 后端访问层（CloudBase 优先 → Supabase → 本地） ---------- */
+  function cbEnabled() { return !!(typeof CLOUDBASE_API_BASE !== "undefined" && CLOUDBASE_API_BASE); }
   function sbEnabled() { return !!(SUPABASE_URL && SUPABASE_ANON_KEY); }
+  function beEnabled() { return cbEnabled() || sbEnabled(); }
 
   function getDeviceId() {
     var d = localStorage.getItem(DEVICE_KEY);
@@ -58,6 +60,23 @@
       localStorage.setItem(DEVICE_KEY, d);
     }
     return d;
+  }
+
+  /* CloudBase 云函数调用：用 text/plain 发送 JSON，避开跨域预检 */
+  function cbCall(action, payload) {
+    var body = { action: action, device: getDeviceId() };
+    for (var k in (payload || {})) { if (Object.prototype.hasOwnProperty.call(payload, k)) body[k] = payload[k]; }
+    return fetch(CLOUDBASE_API_BASE, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      if (!r.ok) throw new Error("cb " + action + " http " + r.status);
+      return r.json();
+    }).then(function (d) {
+      if (!d || d.ok !== true) throw new Error("cb " + action + " " + ((d && d.error) || "bad payload"));
+      return d;
+    });
   }
 
   function sbRPC(fn, args) {
@@ -75,8 +94,14 @@
     });
   }
 
-  // 返回：{ok, remain, reason}
-  function cloudCheckPassword(pwd) {
+  // 统一接口：返回 {ok:true, remain} 或 {ok:false, reason:"wrong"|"exhausted"}
+  function apiCheckPassword(pwd) {
+    if (cbEnabled()) {
+      return cbCall("check", { code: pwd }).then(function (d) {
+        if (!d.valid) return { ok: false, reason: d.reason || "wrong" };
+        return { ok: true, remain: d.remain };
+      });
+    }
     return sbRPC("check_password", { p_code: pwd }).then(function (ok) {
       if (!ok) return { ok: false, reason: "wrong" };
       return sbRPC("get_remaining_uses", { p_code: pwd, p_device: getDeviceId() })
@@ -87,7 +112,22 @@
     });
   }
 
-  function cloudConsumeUse(pwd) {
+  // 查询剩余次数（不扣次）
+  function apiRemain(pwd) {
+    if (cbEnabled()) {
+      return cbCall("remain", { code: pwd }).then(function (d) { return d.remain; });
+    }
+    return sbRPC("get_remaining_uses", { p_code: pwd, p_device: getDeviceId() });
+  }
+
+  // 扣减一次（答题结束调用）
+  function apiConsume(pwd) {
+    if (cbEnabled()) {
+      return cbCall("consume", { code: pwd }).then(function (d) {
+        if (!d.valid) return { ok: false, reason: d.reason || "wrong" };
+        return { ok: true, used: d.used, remain: d.remain };
+      });
+    }
     return sbRPC("consume_test_use", { p_code: pwd, p_device: getDeviceId(), p_max: MAX_USES_PER_DEVICE })
       .then(function (n) {
         if (n === -1) return { ok: false, reason: "wrong" };
@@ -232,8 +272,8 @@
     if (!pwd) { msg.textContent = "请输入测评密码"; msg.className = "gate-msg err"; return; }
     msg.textContent = "验证中…"; msg.className = "gate-msg";
 
-    if (sbEnabled()) {
-      cloudCheckPassword(pwd).then(function (res) {
+    if (beEnabled()) {
+      apiCheckPassword(pwd).then(function (res) {
         if (!res.ok) {
           msg.textContent = res.reason === "wrong"
             ? "密码不正确，请检查后重试"
@@ -247,7 +287,13 @@
         sessionStorage.setItem(CURRENT_PWD_KEY, pwd);
         setTimeout(gotoIntro, 500);
       }).catch(function () {
-        // 云端不可达（网络受限）→ 自动降级为本地校验，保证网站始终可用
+        if (cbEnabled()) {
+          // CloudBase 为主后端时不本地放行，避免绕过校验
+          msg.textContent = "网络波动，请稍后重试";
+          msg.className = "gate-msg err";
+          return;
+        }
+        // Supabase 不可达（大陆网络受限）→ 自动降级为本地校验，保证网站始终可用
         localUnlock(pwd);
       });
       return;
@@ -279,10 +325,10 @@
 
   function gotoIntro() {
     var el = document.getElementById("remainCount");
-    if (sbEnabled() && currentPwd) {
-      sbRPC("get_remaining_uses", { p_code: currentPwd, p_device: getDeviceId() })
+    if (beEnabled() && currentPwd) {
+      apiRemain(currentPwd)
         .then(function (n) { el.textContent = n; })
-        .catch(function () { el.textContent = localRemaining(currentPwd); });
+        .catch(function () { el.textContent = cbEnabled() ? "-" : localRemaining(currentPwd); });
     } else {
       el.textContent = localRemaining(currentPwd);
     }
@@ -293,36 +339,40 @@
   var answers = [];
   var qIndex = 0;
 
+  function enterQuiz() {
+    answers = []; qIndex = 0;
+    showScreen("screen-quiz");
+    renderQuestion();
+  }
+
   function startQuiz() {
-    if (sbEnabled() && currentPwd) {
-      sbRPC("get_remaining_uses", { p_code: currentPwd, p_device: getDeviceId() })
+    if (beEnabled() && currentPwd) {
+      apiRemain(currentPwd)
         .then(function (n) {
           if (n <= 0) { showToast("该密码次数已用完，请输入新密码"); showScreen("screen-gate"); return; }
-          answers = []; qIndex = 0;
-          showScreen("screen-quiz");
-          renderQuestion();
+          enterQuiz();
         })
         .catch(function () {
-          // 云端不可达 → 本地兜底
+          if (cbEnabled()) {
+            // 主后端不可达：允许先答题，交卷时再扣次（避免网络抖动卡住用户）
+            enterQuiz();
+            return;
+          }
           if (localRemaining(currentPwd) <= 0) {
             showToast("该密码次数已用完，请输入新密码");
             showScreen("screen-gate");
             return;
           }
-          answers = []; qIndex = 0;
-          showScreen("screen-quiz");
-          renderQuestion();
+          enterQuiz();
         });
       return;
     }
-    if (!sbEnabled() && localRemaining(currentPwd) <= 0) {
+    if (localRemaining(currentPwd) <= 0) {
       showToast("该密码次数已用完，请输入新密码");
       showScreen("screen-gate");
       return;
     }
-    answers = []; qIndex = 0;
-    showScreen("screen-quiz");
-    renderQuestion();
+    enterQuiz();
   }
 
   function renderQuestion() {
@@ -373,12 +423,14 @@
       renderResult(result);
     }
 
-    if (sbEnabled() && currentPwd) {
-      cloudConsumeUse(currentPwd).then(done).catch(function () {
-        // 云端失败不阻塞用户看结果，本地也记一笔
-        var usage = getUsage();
-        usage[currentPwd] = (usage[currentPwd] || 0) + 1;
-        setUsage(usage);
+    if (beEnabled() && currentPwd) {
+      apiConsume(currentPwd).then(done).catch(function () {
+        // 云端失败不阻塞用户看结果；Supabase 模式下本地补记一笔
+        if (!cbEnabled()) {
+          var usage = getUsage();
+          usage[currentPwd] = (usage[currentPwd] || 0) + 1;
+          setUsage(usage);
+        }
         done();
       });
       return;
@@ -457,15 +509,16 @@
   /* ---------- 再测一次 ---------- */
   function retake() {
     var savedPwd = sessionStorage.getItem(CURRENT_PWD_KEY) || "";
-    if (sbEnabled()) {
+    if (beEnabled()) {
       if (!savedPwd) { showScreen("screen-gate"); return; }
       currentPwd = savedPwd;
-      sbRPC("get_remaining_uses", { p_code: savedPwd, p_device: getDeviceId() })
+      apiRemain(savedPwd)
         .then(function (n) {
           if (n <= 0) { showToast("该密码次数已用完，请输入新密码"); showScreen("screen-gate"); return; }
           gotoIntro();
         })
         .catch(function () {
+          if (cbEnabled()) { gotoIntro(); return; }
           if (localRemaining(savedPwd) <= 0) {
             showToast("该密码次数已用完，请输入新密码");
             showScreen("screen-gate");
