@@ -1,9 +1,7 @@
 {
   "name": "pwd",
   "version": "1.0.0",
-  "description": "存款安全感测试 · 密码校验与次数统计云函数",
+  "description": "存款安全感测试 · 密码校验云函数（PG 网关代理）",
   "main": "index.js",
-  "dependencies": {
-    "@cloudbase/node-sdk": "^3.18.7"
-  }
+  "dependencies": {}
 }

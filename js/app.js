@@ -104,7 +104,7 @@
   }
 
   function pgConsume(pwd) {
-    return fetch(PG_GATEWAY_BASE + "/v1/rdb/rpc/consume_use", {
+    return fetch(PG_GATEWAY_BASE + "/v1/rdb/rest/rpc/consume_use", {
       method: "POST",
       headers: pgHeaders(),
       body: JSON.stringify({ p_code: pwd })

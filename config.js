@@ -1,29 +1,17 @@
 /* ============================================================
-   存款安全感测试 · 密码池配置
+   密码池配置
    ------------------------------------------------------------
-   使用说明（卖家操作手册）：
-   1. 下面 PASSWORDS 数组里是所有可售密码，每个密码每台设备可测 3 次
-   2. 卖出一个密码后，把它从数组里删除（或移到 SOLD 注释区），
-      重新上传/发布网站即可作废该密码
-   3. 用户端次数记录存在用户自己的浏览器里（按设备计数）
+   ⚠️ 接入云端后端后，密码只存在云端数据库（test_passwords 表），
+   前端不再保存明文列表，防止查看源码白嫖。
+   前端 PASSWORDS 数组仅作「云端不可达时」的最后兜底，保持为空。
+   密码管理请在 CloudBase 控制台操作（tcb.cloud.tencent.com）：
+     - 新增密码：SQL Editor 执行
+         INSERT INTO public.test_passwords (code, max) VALUES ('CKAQ-XXXX', 3);
+     - 作废密码：UPDATE public.test_passwords SET active = false WHERE code = 'CKAQ-XXXX';
+     - 补充次数：UPDATE public.test_passwords SET used = 0 WHERE code = 'CKAQ-XXXX';
    ============================================================ */
 
-const PASSWORDS = [
-  "CKAQ-2601", "CKAQ-2602", "CKAQ-2603", "CKAQ-2604", "CKAQ-2605",
-  "CKAQ-2606", "CKAQ-2607", "CKAQ-2608", "CKAQ-2609", "CKAQ-2610",
-  "CKAQ-2611", "CKAQ-2612", "CKAQ-2613", "CKAQ-2614", "CKAQ-2615",
-  "CKAQ-2616", "CKAQ-2617", "CKAQ-2618", "CKAQ-2619", "CKAQ-2620",
-  "CKAQ-2621", "CKAQ-2622", "CKAQ-2623", "CKAQ-2624", "CKAQ-2625",
-  "CKAQ-2626", "CKAQ-2627", "CKAQ-2628", "CKAQ-2629", "CKAQ-2630",
-  "CKAQ-2631", "CKAQ-2632", "CKAQ-2633", "CKAQ-2634", "CKAQ-2635",
-  "CKAQ-2636", "CKAQ-2637", "CKAQ-2638", "CKAQ-2639", "CKAQ-2640",
-  "CKAQ-2641", "CKAQ-2642", "CKAQ-2643", "CKAQ-2644", "CKAQ-2645",
-  "CKAQ-2646", "CKAQ-2647", "CKAQ-2648", "CKAQ-2649", "CKAQ-2650"
-];
-
-/* 已售出/作废的密码放这里留档（不参与验证）：
-   已售：CKAQ-2601（2026-10-26 售出）
-   */
+const PASSWORDS = [];
 
 const MAX_USES_PER_DEVICE = 3;
 
@@ -37,7 +25,7 @@ const MAX_USES_PER_DEVICE = 3;
    此时前端不再需要密码明文列表（PASSWORDS 可清空），密码更安全。
    ============================================================ */
 const CLOUDBASE_ENV_ID = "leipeng99-d8gq6j5dzb0a65db1";
-const CLOUDBASE_API_BASE = "";
+const CLOUDBASE_API_BASE = "https://leipeng99-d8gq6j5dzb0a65db1.service.tcloudbase.com/pwd";
 
 /* ============================================================
    CloudBase PostgreSQL 数据网关（主后端，国内直连）
@@ -48,7 +36,7 @@ const CLOUDBASE_API_BASE = "";
      https://tcb.cloud.tencent.com/dev?envId=leipeng99-d8gq6j5dzb0a65db1#/env/apikey
    ============================================================ */
 const PG_GATEWAY_BASE = "https://leipeng99-d8gq6j5dzb0a65db1.api.tcloudbasegateway.com";
-const PG_PUBLISHABLE_KEY = "";
+const PG_PUBLISHABLE_KEY = "eyJhbGciOiJSUzI1NiIsImtpZCI6IjY2ZjVhNjAzLTQ4OTAtNDlhNy1iZTI2LTBjMTA4Y2MxNDQzMCJ9.eyJpc3MiOiJodHRwczovL2xlaXBlbmc5OS1kOGdxNmo1ZHpiMGE2NWRiMS5hcC1zaGFuZ2hhaS50Y2ItYXBpLnRlbmNlbnRjbG91ZGFwaS5jb20iLCJzdWIiOiJhbm9uIiwiYXVkIjoibGVpcGVuZzk5LWQ4Z3E2ajVkemIwYTY1ZGIxIiwiZXhwIjo0MDk2Njc0NzM1LCJpYXQiOjE3OTI5OTE1MzUsIm5vbmNlIjoiV0pqRndpQUJTcHFHOVp1OEZ2TkRvUSIsImF0X2hhc2giOiJXSmpGd2lBQlNwcUc5WnU4RnZORG9RIiwibmFtZSI6IkFub255bW91cyIsInNjb3BlIjoiYW5vbnltb3VzIiwicHJvamVjdF9pZCI6ImxlaXBlbmc5OS1kOGdxNmo1ZHpiMGE2NWRiMSIsIm1ldGEiOnsicGxhdGZvcm0iOiJQdWJsaXNoYWJsZUtleSJ9LCJyb2xlIjoiYW5vbiIsImlzX2Fub255bW91cyI6dHJ1ZSwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiYW5vbnltb3VzIiwicHJvdmlkZXJzIjpbImFub255bW91cyJdfSwidXNlcl9tZXRhZGF0YSI6eyJuYW1lIjoiQW5vbnltb3VzIn0sInVzZXJfdHlwZSI6IiIsImNsaWVudF90eXBlIjoiY2xpZW50X3VzZXIiLCJpc19zeXN0ZW1fYWRtaW4iOmZhbHNlfQ.UNBUWm4LftrWZwuRmQLLzWbF7kOAmC5PUp7tjfbzlLDmwka13m8lLoLoJTH7S1hZbpL46Q3XMbxPRU8YrBqi9h7JPVJXawzBumtLxNqePPp-D3l1BLEi5f2ZnMi7ufLcdjpKivQRkgXqGn6YJPzRR-0mv0_RwTAbxaRwXdaYD3p8jJupPw9vzuWFQUHok7yiIaSeRSc3y_qC5OYs1vlzrvGrgA0AOYewoj3dNRoi9ZYBDQPztuVIgreAD3vYAlQuyvuFAP-7vfhXJdLm3m3Wo9baCdWtbjqbeA2BesGoz4IKQiGu8OPIhxDyCi1v8-MPr7wci6aggGt3BR-_bNoXiw";
 
 /* ============================================================
    Supabase 云端配置（后端数据库）
