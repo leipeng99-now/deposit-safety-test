@@ -22,6 +22,8 @@ html, body {
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   min-height: 100%;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 body {
